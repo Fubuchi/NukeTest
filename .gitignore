@@ -1,0 +1,7 @@
+/build/bin
+/build/obj
+/source/app/bin
+/source/app/obj
+/source/library/bin
+/source/library/obj
+/.vscode

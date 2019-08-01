@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Nuke.Common;
 using Nuke.Common.Execution;
@@ -8,21 +9,17 @@ using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Utilities.Collections;
+using Nuke.Common.Tools.NUnit;
 using static Nuke.Common.EnvironmentInfo;
 using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
+using static Nuke.GitHub.ChangeLogExtensions;
 
 [CheckBuildProjectConfigurations]
 [UnsetVisualStudioEnvironmentVariables]
 class Build : NukeBuild
 {
-  /// Support plugins are available for:
-  ///   - JetBrains ReSharper        https://nuke.build/resharper
-  ///   - JetBrains Rider            https://nuke.build/rider
-  ///   - Microsoft VisualStudio     https://nuke.build/visualstudio
-  ///   - Microsoft VSCode           https://nuke.build/vscode
-
   public static int Main() => Execute<Build>(x => x.Compile);
 
   [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
@@ -35,6 +32,10 @@ class Build : NukeBuild
   AbsolutePath SourceDirectory => RootDirectory / "source";
   AbsolutePath TestsDirectory => RootDirectory / "tests";
   AbsolutePath OutputDirectory => RootDirectory / "output";
+  AbsolutePath TestResultDirectory => OutputDirectory / "test-result";
+  AbsolutePath PackDirectory => OutputDirectory / "dist";
+
+  string ChangeLogFile => RootDirectory / "CHANGELOG.md";
 
   Target Clean => _ => _
       .Before(Restore)
@@ -43,6 +44,12 @@ class Build : NukeBuild
         SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
         TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
         EnsureCleanDirectory(OutputDirectory);
+      });
+
+  Target CleanTestResult => _ => _
+      .Executes(() =>
+      {
+        OutputDirectory.GlobDirectories("**/test-result").ForEach(DeleteFile);
       });
 
   Target Restore => _ => _
@@ -64,4 +71,39 @@ class Build : NukeBuild
               .SetInformationalVersion(GitVersion.InformationalVersion)
               .EnableNoRestore());
       });
+
+  Target Pack => _ => _
+      .DependsOn(Compile)
+      .Executes(() =>
+      {
+        var changeLog = GetCompleteChangeLog(ChangeLogFile)
+          .EscapeStringPropertyForMsBuild();
+
+        DotNetPack(x => x
+              .SetConfiguration(Configuration)
+              .SetPackageReleaseNotes(changeLog)
+              .EnableNoBuild()
+              .SetOutputDirectory(PackDirectory)
+              .SetVersion(GitVersion.NuGetVersion));
+      });
+
+  Target Test => _ => _
+    .DependsOn(Compile)
+    .DependsOn(CleanTestResult)
+    .Executes(() =>
+    {
+      var testProjects = GlobFiles(RootDirectory / "tests", "**/*.csproj");
+      var testRun = 1;
+      foreach (var testProject in testProjects)
+      {
+        var projectDirectory = Path.GetDirectoryName(testProject);
+        var current = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+        DotNetTest(x => x
+                .SetNoBuild(true)
+                .SetProjectFile(testProject)
+                .SetTestAdapterPath(".")
+                .SetResultsDirectory(TestResultDirectory)
+                .SetLogger($"trx;LogFileName={$"test_{testRun++}_{current}.xml"}"));
+      }
+    });
 }

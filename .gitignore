@@ -5,3 +5,7 @@
 /source/library/bin
 /source/library/obj
 /.vscode
+/tests/NukeTest/obj
+/tests/NukeTest/bin
+/output
+/.tmp

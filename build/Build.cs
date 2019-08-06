@@ -1,6 +1,6 @@
 using System;
-using System.IO;
 using System.Linq;
+using System.IO;
 using Nuke.Common;
 using Nuke.Common.Execution;
 using Nuke.Common.Git;
@@ -10,7 +10,8 @@ using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Utilities.Collections;
 using Nuke.Common.Tools.NUnit;
-using static Nuke.Common.EnvironmentInfo;
+using Nuke.Common.Tools.Coverlet;
+using Nuke.Common.Tools.ReportGenerator;
 using static Nuke.Common.IO.FileSystemTasks;
 using static Nuke.Common.IO.PathConstruction;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
@@ -37,19 +38,23 @@ class Build : NukeBuild
 
   string ChangeLogFile => RootDirectory / "CHANGELOG.md";
 
+  Target CleanAll => _ => _
+      .DependsOn(Clean)
+      .DependsOn(CleanTestResult)
+      .Executes(() => { });
+
   Target Clean => _ => _
       .Before(Restore)
       .Executes(() =>
       {
         SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
         TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
-        EnsureCleanDirectory(OutputDirectory);
       });
 
   Target CleanTestResult => _ => _
       .Executes(() =>
       {
-        OutputDirectory.GlobDirectories("**/test-result").ForEach(DeleteFile);
+        TestResultDirectory.GlobFiles("*").ForEach(DeleteFile);
       });
 
   Target Restore => _ => _
@@ -64,12 +69,12 @@ class Build : NukeBuild
       .Executes(() =>
       {
         DotNetBuild(s => s
-              .SetProjectFile(Solution)
-              .SetConfiguration(Configuration)
-              .SetAssemblyVersion(GitVersion.GetNormalizedAssemblyVersion())
-              .SetFileVersion(GitVersion.GetNormalizedFileVersion())
-              .SetInformationalVersion(GitVersion.InformationalVersion)
-              .EnableNoRestore());
+          .SetProjectFile(Solution)
+          .SetConfiguration(Configuration)
+          .SetAssemblyVersion(GitVersion.GetNormalizedAssemblyVersion())
+          .SetFileVersion(GitVersion.GetNormalizedFileVersion())
+          .SetInformationalVersion(GitVersion.InformationalVersion)
+          .EnableNoRestore());
       });
 
   Target Pack => _ => _
@@ -80,11 +85,11 @@ class Build : NukeBuild
           .EscapeStringPropertyForMsBuild();
 
         DotNetPack(x => x
-              .SetConfiguration(Configuration)
-              .SetPackageReleaseNotes(changeLog)
-              .EnableNoBuild()
-              .SetOutputDirectory(PackDirectory)
-              .SetVersion(GitVersion.NuGetVersion));
+          .SetConfiguration(Configuration)
+          .SetPackageReleaseNotes(changeLog)
+          .EnableNoBuild()
+          .SetOutputDirectory(PackDirectory)
+          .SetVersion(GitVersion.NuGetVersion));
       });
 
   Target Test => _ => _
@@ -92,18 +97,54 @@ class Build : NukeBuild
     .DependsOn(CleanTestResult)
     .Executes(() =>
     {
-      var testProjects = GlobFiles(RootDirectory / "tests", "**/*.csproj");
-      var testRun = 1;
-      foreach (var testProject in testProjects)
-      {
-        var projectDirectory = Path.GetDirectoryName(testProject);
-        var current = DateTime.Now.ToString("yyyyMMddHHmmssfff");
-        DotNetTest(x => x
-                .SetNoBuild(true)
-                .SetProjectFile(testProject)
-                .SetTestAdapterPath(".")
-                .SetResultsDirectory(TestResultDirectory)
-                .SetLogger($"trx;LogFileName={$"test_{testRun++}_{current}.xml"}"));
-      }
+      var testProjects = GlobFiles(TestsDirectory, "**/*.csproj");
+      testProjects
+        .NotEmpty()
+        .ForEach(testProject =>
+        {
+          var projectDirectory = Path.GetDirectoryName(testProject);
+          var projectName = Path.GetFileNameWithoutExtension(testProject);
+          var current = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+          DotNetTest(x => x
+            .SetNoBuild(true)
+            .SetProjectFile(testProject)
+            .SetTestAdapterPath(".")
+            .SetResultsDirectory(TestResultDirectory)
+            .SetLogger($"trx;LogFileName={$"test_{projectName}_{current}.xml"}"));
+        });
     });
+
+  Target Coverage => _ => _
+    .DependsOn(Compile)
+    .DependsOn(CleanTestResult)
+    .Executes(() =>
+    {
+      var testProjects = GlobFiles(TestsDirectory, "**/*.csproj").ToList();
+      var dotnetPath = ToolPathResolver.GetPathExecutable("dotnet");
+      testProjects
+        .NotEmpty()
+        .ForEach(testProject =>
+        {
+          var projectDirectory = Path.GetDirectoryName(testProject);
+          var projectName = Path.GetFileNameWithoutExtension(testProject);
+          var dllPath = GlobFiles(projectDirectory, $"**/*/{projectName}.dll").First();
+          var current = DateTime.Now.ToString("yyyyMMddHHmmssfff");
+
+          CoverletTasks.Coverlet(s => s
+            .SetAssembly(dllPath)
+            .SetTarget(dotnetPath)
+            .SetTargetArgs(new[]{
+              "test",
+              projectDirectory,
+              "--no-build"
+            })
+            .SetOutput(TestResultDirectory / $"{projectName}_{current}.xml")
+            .SetFormat(CoverletOutputFormat.cobertura));
+        });
+      ReportGeneratorTasks.ReportGenerator(s => s
+            .SetTargetDirectory(TestResultDirectory)
+            .SetReports(TestResultDirectory / "*.xml"));
+    });
+
+
 }

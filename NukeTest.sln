@@ -11,6 +11,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "library", "source\library\l
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{DEC942F0-2B7A-4C6B-9991-780622FCBB32}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{14427BF9-DD10-402B-A214-543138533698}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NukeTest", "tests\NukeTest\NukeTest.csproj", "{07A0C00B-B76F-4C5A-8C79-5025C67880B3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,18 @@ Global
 		{AB4632B6-4224-4062-AEC6-B3C115B15D4D}.Release|x64.Build.0 = Release|Any CPU
 		{AB4632B6-4224-4062-AEC6-B3C115B15D4D}.Release|x86.ActiveCfg = Release|Any CPU
 		{AB4632B6-4224-4062-AEC6-B3C115B15D4D}.Release|x86.Build.0 = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|x64.Build.0 = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Debug|x86.Build.0 = Debug|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|x64.ActiveCfg = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|x64.Build.0 = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|x86.ActiveCfg = Release|Any CPU
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -54,5 +70,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{D0772CC7-9B92-4C1D-8BDC-90D4A190F071} = {B22F291D-7DE8-4D99-B2B7-C7F5598AEB0C}
 		{AB4632B6-4224-4062-AEC6-B3C115B15D4D} = {B22F291D-7DE8-4D99-B2B7-C7F5598AEB0C}
+		{07A0C00B-B76F-4C5A-8C79-5025C67880B3} = {14427BF9-DD10-402B-A214-543138533698}
 	EndGlobalSection
 EndGlobal
